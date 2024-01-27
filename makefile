@@ -1,11 +1,12 @@
 FLAGS := -O3 -flto -DATS_MEMALLOC_LIBC
 
+DATS_FILES := main.dats file.dats vector.dats
+
 all: main
 
-main: main.dats file.dats
-	patscc ${FLAGS} -o atshell main.dats file.dats
+main: ${DATS_FILES}
+	patscc ${FLAGS} -o atshell $^
 
 # Typecheck only
-check: main.dats file.dats
-	patscc ${FLAGS} -tcats -o atshell main.dats file.dats
-
+check: ${DATS_FILES}
+	patscc ${FLAGS} -tcats -o atshell $^
