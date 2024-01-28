@@ -1,10 +1,6 @@
 #include "share/atspre_staload.hats"
 #include "share/atspre_staload_libats_ML.hats"
-#define ATS_DYNLOADFLAG 0
-
-absview malloced_ptr
-
-vtypedef Boxed(a: t@ype, l: addr) = (malloced_ptr, a? @ l | ptr l)
+staload "vector.sats"
 
 fn {a: t@ype} ty_malloc (): [l: agz] (Boxed(a, l)) =
     $extfcall([l: agz] (Boxed(a, l)), "malloc", sizeof<a>)
@@ -13,24 +9,6 @@ fn {a: t@ype} array_malloc {n: nat} (n: int n): [l: agz] (Boxed(@[a?][n], l)) =
     $extfcall([l: agz] (Boxed(@[a?][n], l)), "malloc", sizeof<a> * n)
 
 extern fn ty_free {a: t@ype} {l: addr} (Boxed(a, l)): void = "mac#free"
-
-
-dataview disjunct_array_v(a: t@ype, l: addr, n: int, m: int) =
-  | disjunct_array_nil (a, l, 0, 0)
-
-  | {n: nat} {m: nat}
-    disjunct_array_inited (a, l, n + 1, m) of 
-    (a @ l, disjunct_array_v(a, l + sizeof(a), n, m))
-
-  | {m: nat}
-    disjunct_array_uninited (a, l, 0, m + 1) of 
-    (a? @ l, disjunct_array_v(a, l + sizeof(a), 0, m))
-
-vtypedef DynArray(a: t@ype, l: addr, n: int, m: int) = 
-    (malloced_ptr, disjunct_array_v (a, l, n, m) | ptr l)
-
-vtypedef Vector(a: t@ype, l: addr, n: int, m: int) = 
-    @{ detail=DynArray(a, l, n, m - n), size=size_t n, capacity=size_t m }
 
 prfun array_v_to_disjunct {a: t@ype}{l: addr}{n: nat} .<n>.
       (v: !array_v (a?, l, n) >> disjunct_array_v(a, l, 0, n)): void =
@@ -161,7 +139,7 @@ fun {a: t@ype} vector_make (): [l: agz][m: pos] (Vector(a, l, 0, m)) =
         val box = array_malloc (1)
         prval () = array_v_to_disjunct (box.1)
     in
-        @{ detail=box, size=i2sz(0), capacity=i2sz(1)}
+        @{ detail=box, size=i2sz(0), capacity=i2sz(1) }
 end
 
 // I could prove this, but frankly it'd be a waste of time

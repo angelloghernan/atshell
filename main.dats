@@ -1,6 +1,8 @@
 #include "share/atspre_staload.hats"
 #include "share/atspre_staload_libats_ML.hats"
 staload "file.sats"
+staload "vector.sats"
+staload "./vector.dats"
 staload "prelude/basics_dyn.sats"
 
 macdef NULL = $extval(ptr(0), "0")
@@ -79,21 +81,28 @@ fn print_cmd {l: addr}{n: nat}{b: bool}
     in end
     else ()
 
-implement main0 (argv, argc) = () where {
-    val () = print ("> ")
+implement main0 (argv, argc) = 
+    let
+        val () = print ("> ")
 
-    val array = get_line ()
+        val array = get_line ()
 
-    var cmd = make_empty_cmd (array)
+        var cmd = make_empty_cmd (array)
 
-    val b = find_cmd (array, cmd)
+        val b = find_cmd (array, cmd)
 
-    val () = print_cmd (array, cmd, b)
+        val () = print_cmd (array, cmd, b)
 
-    val () = if b then let prval () = opt_unsome (cmd) in end
-             else let prval () = opt_unnone (cmd) in end
 
-    val () = array_iter (array, lam c => print (c))
+        val () = if b then let prval () = opt_unsome (cmd) in end
+                 else let prval () = opt_unnone (cmd) in end
 
-    val () = put_buf (array.buffer)
-}
+        val () = array_iter (array, lam c => print (c))
+
+        val () = put_buf (array.buffer)
+
+        var vec = vector_make<int> ()
+
+        val () = vector_dealloc (vec)
+    in
+end
