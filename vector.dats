@@ -8,8 +8,6 @@ fn {a: t@ype} ty_malloc (): [l: agz] (Boxed(a, l)) =
 fn {a: t@ype} array_malloc {n: nat} (n: int n): [l: agz] (Boxed(@[a?][n], l)) =
     $extfcall([l: agz] (Boxed(@[a?][n], l)), "malloc", sizeof<a> * n)
 
-extern fn ty_free {a: t@ype} {l: addr} (Boxed(a, l)): void = "mac#free"
-
 prfun array_v_to_disjunct {a: t@ype}{l: addr}{n: nat} .<n>.
       (v: !array_v (a?, l, n) >> disjunct_array_v(a, l, 0, n)): void =
       sif n == 0 then let
@@ -134,7 +132,7 @@ fn {a: t@ype} dynarray_copy {l1, l2: addr} {n1, n2, m1, m2: nat | n2 + m2 >= n1}
         loop<a>(a1.1, a2.1, to_copy, a1.2, a2.2)
 end
 
-fun {a: t@ype} vector_make (): [l: agz][m: pos] (Vector(a, l, 0, m)) =
+implement {a: t@ype} vector_make (): [l: agz][m: pos] (Vector(a, l, 0, m)) =
     let
         val box = array_malloc (1)
         prval () = array_v_to_disjunct (box.1)
@@ -142,11 +140,7 @@ fun {a: t@ype} vector_make (): [l: agz][m: pos] (Vector(a, l, 0, m)) =
         @{ detail=box, size=i2sz(0), capacity=i2sz(1) }
 end
 
-// I could prove this, but frankly it'd be a waste of time
-extern praxi commutative_add_mul {l: addr} {n, m: int} (): [l + m * n == l + n * m] void
-
-fun {a: t@ype} vector_push {l: agz}{m: pos}{n: nat | n <= m}
-    (vec: &(Vector(a, l, n, m)) >> Vector(a, l2, n + 1, k), elem: a): #[k: pos | k >= n + 1] #[l2: agz] void =
+implement {a} vector_push {l}{m}{n} (vec, elem): void =
     let
         fn {a: t@ype} push_one {l: agz}{m: pos}{n: nat | n < m}
             (vec: &(Vector(a, l, n, m)) >> Vector(a, l, n + 1, m), elem: a): void =
@@ -182,8 +176,7 @@ end
 fun {a: t@ype} vector_back_ptr {l: agz}{n, m: nat | n > 0} (vec: !Vector(a, l, n, m)): (ptr (l + (n - 1) * sizeof(a))) =
         ptr_add<a>(vec.detail.2, vec.size - 1)
 
-fun {a: t@ype} vector_pop {l: agz}{m: pos}{n: pos | n <= m}
-    (vec: &(Vector(a, l, n, m)) >> Vector(a, l, n - 1, m)): a =
+implement {a} vector_pop {l: addr}{m: int}{n: int} (vec): a =
     let
         prval (l, r) = disjunct_array_split (vec.detail.1)
         val p = vec.detail.2
@@ -196,7 +189,7 @@ fun {a: t@ype} vector_pop {l: agz}{m: pos}{n: pos | n <= m}
         elem
 end
 
-fun vector_dealloc {a:t@ype}{l: agz}{n, m: nat | n <= m} (vec: Vector(a, l, n, m)): void =
+implement vector_dealloc {a:t@ype}{l: addr}{n, m: int} (vec: Vector(a, l, n, m)): void =
     let
         prval () = disjunct_array_uninit (vec.detail.1)
         prval () = disjunct_to_array_v (vec.detail.1)

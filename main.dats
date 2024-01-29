@@ -1,9 +1,9 @@
 #include "share/atspre_staload.hats"
 #include "share/atspre_staload_libats_ML.hats"
 staload "file.sats"
-staload "vector.sats"
-staload "./vector.dats"
 staload "prelude/basics_dyn.sats"
+staload "./vector.sats"
+staload _ = "./vector.dats"
 
 macdef NULL = $extval(ptr(0), "0")
 
@@ -102,7 +102,25 @@ implement main0 (argv, argc) =
         val () = put_buf (array.buffer)
 
         var vec = vector_make<int> ()
+        
+        val _ = $showtype vec.size
 
-        val () = vector_dealloc (vec)
+        val () = vector_push (vec, 1)
+
+        val _ = $showtype vec.size
+        
+        val () = vector_push (vec, 2)
+
+        val _ = $showtype vec.size
+
+        val () = vector_push (vec, 3)
+
+        val _ = $showtype vec.size
+
+        prval () = disjunct_array_uninit (vec.detail.1)
+        prval () = disjunct_to_array_v (vec.detail.1)
+        val () = ty_free (vec.detail)
+
+        // val () = vector_dealloc (vec)
     in
 end
