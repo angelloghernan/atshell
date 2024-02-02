@@ -140,38 +140,49 @@ implement {a: t@ype} vector_make (): [l: agz][m: pos] (Vector(a, l, 0, m)) =
         @{ detail=box, size=i2sz(0), capacity=i2sz(1) }
 end
 
-implement {a} vector_push {l}{m}{n} (vec, elem): void =
+implement {a} vector_push_one {l}{m}{n} (vec, elem): void =
     let
-        fn {a: t@ype} push_one {l: agz}{m: pos}{n: nat | n < m}
-            (vec: &(Vector(a, l, n, m)) >> Vector(a, l, n + 1, m), elem: a): void =
-            let
-                prval () = commutative_add_mul {l} {n, sizeof(a)} ()
-                prval (l, r) = disjunct_array_split (vec.detail.1)
-                val p: ptr(l + n * sizeof(a)) = ptr_add<a>(vec.detail.2, vec.size)
-                prval (pf, r) = array_v_uncons (r)
-                prval (pf | p) = viewptr_match(pf | p)
-                val () = !p := elem
-                prval () = l := array_v_extend(l, pf)
-                prval () = vec.detail.1 := disjunct_array_unsplit (l, r)
-                val () = vec.size := vec.size + 1
-            in
-        end
+        prval () = commutative_add_mul {l} {n, sizeof(a)} ()
+        prval (l, r) = disjunct_array_split (vec.detail.1)
+        val p: ptr(l + n * sizeof(a)) = ptr_add<a>(vec.detail.2, vec.size)
+        prval (pf, r) = array_v_uncons (r)
+        val () = ptr_set<a> (pf | p, elem)
+        prval () = l := array_v_extend(l, pf)
+        prval () = vec.detail.1 := disjunct_array_unsplit (l, r)
+        val () = vec.size := vec.size + 1
     in
-        if vec.size < vec.capacity then push_one (vec, elem)
-        else let
-            val new_capacity: size_t(m * 2) = vec.capacity * 2
-            val box = array_malloc(sz2i(new_capacity))
-            prval () = array_v_to_disjunct (box.1)
-            val () = dynarray_copy(vec.detail, box, vec.size)
-            prval () = disjunct_array_uninit (vec.detail.1)
-            prval () = disjunct_to_array_v (vec.detail.1)
-            val () = ty_free (vec.detail)
-            val () = vec.detail := box
-            val () = vec.capacity := new_capacity
-        in
-            push_one (vec, elem)
-        end
 end
+
+implement {a} vector_expand {l}{m}{n} (vec): void =
+    let
+        val new_capacity: size_t(m * 2) = vec.capacity * 2
+        val box = array_malloc(sz2i(new_capacity))
+        prval () = array_v_to_disjunct (box.1)
+        val () = dynarray_copy(vec.detail, box, vec.size)
+        prval () = disjunct_array_uninit (vec.detail.1)
+        prval () = disjunct_to_array_v (vec.detail.1)
+        val () = ty_free (vec.detail)
+        val () = vec.detail := box
+        val () = vec.capacity := new_capacity
+    in
+end
+
+
+implement {a} vector_get (vec, i): a = elem where {
+    prval (l, r) = disjunct_array_split (vec.detail.1)
+    val p = vec.detail.2
+    val elem = array_get_at(!p, i)
+    prval () = vec.detail.1 := disjunct_array_unsplit (l, r)
+}
+    
+
+(* implement {a} vector_push {l}{m}{j} (vec, elem): void = *)
+(*     if vec.size < vec.capacity then vector_push_one (vec, elem) *)
+(*     else let *)
+(*         val () = vector_expand<a>(vec) *)
+(*     in *)
+(*         vector_push_one (vec, elem) *)
+(*     end *)
 
 fun {a: t@ype} vector_back_ptr {l: agz}{n, m: nat | n > 0} (vec: !Vector(a, l, n, m)): (ptr (l + (n - 1) * sizeof(a))) =
         ptr_add<a>(vec.detail.2, vec.size - 1)

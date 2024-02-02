@@ -20,6 +20,16 @@ vtypedef Array(a: t@ype, l: addr, n: int) = @{ size=size_t n, buffer=Buffer(a, l
 
 typedef Command(n: int) = [m, k: nat | m <= k | k <= n] @{ str_start=size_t m, str_end=size_t k }
 
+fun {a: t@ype} vector_push {l: agz}{m: pos}{n: nat | n <= m}
+    (vec: &(Vector(a, l, n, m)) >> Vector(a, l2, n + 1, k), elem: a):
+    #[k: pos | k >= n + 1] #[l2: agz] void = 
+    if vec.size < vec.capacity then vector_push_one (vec, elem)
+    else let
+        val () = vector_expand<a>(vec)
+    in
+        vector_push_one (vec, elem)
+    end
+
 fn get_line (): [l: agz][n: nat](Array(char, l, n)) = array where {
     var p: ptr = NULL
     var bufsize: size_t
@@ -102,20 +112,40 @@ implement main0 (argv, argc) =
         val () = put_buf (array.buffer)
 
         var vec = vector_make<int> ()
+
+        val () = vector_push<int>(vec, 1)
         
-        val _ = $showtype vec.size
-
-        val () = vector_push (vec, 1)
-
-        val _ = $showtype vec.size
+        val () = vector_push<int>(vec, 2)
         
-        val () = vector_push (vec, 2)
+        val () = vector_push<int>(vec, 3)
 
-        val _ = $showtype vec.size
+        val () = vector_push<int>(vec, 4)
 
-        val () = vector_push (vec, 3)
+        val num = vector_pop<int>(vec)
 
-        val _ = $showtype vec.size
+        val () = print(num)
+
+        val num = vector_pop<int>(vec)
+
+        val () = print(num)
+
+        val num = vector_get<int>(vec, 1)
+
+        val () = print(num)
+
+        val num = vector_get<int>(vec, 0)
+
+        val () = print(num)
+
+        // val _ = $showtype vec.size
+        
+        // val () = vector_push (vec, 2)
+
+        // val _ = $showtype vec.size
+
+        // val () = vector_push (vec, 3)
+
+        // val _ = $showtype vec.size
 
         prval () = disjunct_array_uninit (vec.detail.1)
         prval () = disjunct_to_array_v (vec.detail.1)

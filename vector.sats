@@ -34,6 +34,16 @@ fun {a: t@ype} vector_push {l: agz}{m: pos}{n: nat | n <= m}
     (vec: &(Vector(a, l, n, m)) >> Vector(a, l2, n + 1, k), elem: a):
     #[k: pos | k >= n + 1] #[l2: agz] void
 
+fn {a: t@ype} vector_expand {l: agz}{m: pos}{n: nat | n <= m}
+   (vec: &(Vector(a, l, n, m)) >> Vector(a, l2, n, k)): 
+   #[k: pos | k == 2 * m] #[l2: agz] void
+
+fn {a: t@ype} vector_push_one {l: agz}{m: pos}{n: nat | n < m}
+   (vec: &(Vector(a, l, n, m)) >> Vector(a, l, n + 1, m), elem: a): void
+
+fn {a: t@ype} vector_get {l: agz}{m: pos}{n, i: nat | n < m | i < n}
+   (vec: !(Vector(a, l, n, m)), i: int i): a
+
 fun vector_dealloc {a:t@ype}{l: agz}{n, m: nat | n <= m} (vec: Vector(a, l, n, m)): void
 
 prfun disjunct_array_uninit {a: t@ype}{l: addr}{n, m: nat}
