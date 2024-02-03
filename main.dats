@@ -137,19 +137,11 @@ implement main0 (argv, argc) =
 
         val () = print(num)
 
-        // val _ = $showtype vec.size
-        
-        // val () = vector_push (vec, 2)
+        val () = dynarray_dealloc (vec.detail)
 
-        // val _ = $showtype vec.size
-
-        // val () = vector_push (vec, 3)
-
-        // val _ = $showtype vec.size
-
-        prval () = disjunct_array_uninit (vec.detail.1)
-        prval () = disjunct_to_array_v (vec.detail.1)
-        val () = ty_free (vec.detail)
+        // prval () = disjunct_array_uninit (vec.detail.1)
+        // prval () = disjunct_to_array_v (vec.detail.1)
+        // val () = ty_free (vec.detail)
 
         // val () = vector_dealloc (vec)
     in

@@ -200,6 +200,12 @@ implement {a} vector_pop {l: addr}{m: int}{n: int} (vec): a =
         elem
 end
 
+
+implement dynarray_dealloc (darray): void = ty_free (darray) where {
+    prval () = disjunct_array_uninit (darray.1)
+    prval () = disjunct_to_array_v (darray.1)
+}
+
 implement vector_dealloc {a:t@ype}{l: addr}{n, m: int} (vec: Vector(a, l, n, m)): void =
     let
         prval () = disjunct_array_uninit (vec.detail.1)

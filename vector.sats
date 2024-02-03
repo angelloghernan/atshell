@@ -46,6 +46,8 @@ fn {a: t@ype} vector_get {l: agz}{m: pos}{n, i: nat | n < m | i < n}
 
 fun vector_dealloc {a:t@ype}{l: agz}{n, m: nat | n <= m} (vec: Vector(a, l, n, m)): void
 
+fn dynarray_dealloc {a: t@ype}{l: agz}{n, m: nat} (darray: DynArray(a, l, n, m)): void
+
 prfun disjunct_array_uninit {a: t@ype}{l: addr}{n, m: nat}
       (a1: !disjunct_array_v(a, l, n, m) >> disjunct_array_v(a, l, 0, m + n)): void
 
