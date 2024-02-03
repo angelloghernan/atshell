@@ -63,10 +63,16 @@ fn find_cmd {l: addr}{n: nat}{i: nat | i <= n}
         fun loop {l: addr}{n, i: nat | i <= n} .<n - i>.
             (array: !Array(char, l, n), i: size_t i): [j: nat | j <= n | j >= i] size_t j =
             if i = array.size then i
-            else if array_get_at(!(array.buffer.1), i) = ' ' then i + 1
+            else if array_get_at (!(array.buffer.1), i) = ' ' then i
             else loop (array, i + 1)
+
+        fun first_non_space {l: addr}{n, i: nat | i <= n} .<n - i>.
+            (array: !Array(char, l, n), i: size_t i): [j: nat | j <= n | j >= i] size_t j =
+            if i = array.size then i
+            else if array_get_at (!(array.buffer.1), i) != ' ' then i
+            else first_non_space (array, i + 1)
         
-        val start = i
+        val start = first_non_space (array, i)
     in
         if start = array.size then false where {
             prval () = opt_none(res)
@@ -107,7 +113,7 @@ fn print_cmds {l: addr}{n: nat}{l2: agz}{k: pos}{m: nat | m <= k}
         if i2sz(i) = cmds.size then ()
         else let
             val cmd = vector_get (cmds, i)
-            val () = print_cmd (array, cmd)
+            val () = array_iter_over (array, cmd.str_start, cmd.str_end, lam c => print (c))
         in
             loop (array, cmds, i + 1)
         end
@@ -153,8 +159,6 @@ implement main0 (argv, argc) =
         var cmds = make_cmd_vec (array)
         
         val () = parse_cmds (array, cmds)
-
-        val () = print (cmds.size)
 
         val () = print_cmds (array, cmds)
 
