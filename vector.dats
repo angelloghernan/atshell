@@ -132,7 +132,7 @@ fn {a: t@ype} dynarray_copy {l1, l2: addr} {n1, n2, m1, m2: nat | n2 + m2 >= n1}
         loop<a>(a1.1, a2.1, to_copy, a1.2, a2.2)
 end
 
-implement {a: t@ype} vector_make (): [l: agz][m: pos] (Vector(a, l, 0, m)) =
+implement {a: t@ype} vector_make (): [l: agz] (Vector(a, l, 0, 1)) =
     let
         val box = array_malloc (1)
         prval () = array_v_to_disjunct (box.1)

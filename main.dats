@@ -57,8 +57,8 @@ fn array_iter {l: addr}{n: nat} (array: !Array(char, l, n), f: char -> void): vo
     array_iter_over (array, i2sz(0), array.size, f)
 
 
-fn find_cmd {l: addr}{n: nat}
-            (array: !Array(char, l, n), res: &Command(n)? >> opt(Command(n), b)): #[b:bool] bool(b) =
+fn find_cmd {l: addr}{n: nat}{i: nat | i <= n}
+            (array: !Array(char, l, n), res: &Command(n)? >> opt(Command(n), b), i: size_t i): #[b:bool] bool(b) =
     let
         fun loop {l: addr}{n, i: nat | i <= n} .<n - i>.
             (array: !Array(char, l, n), i: size_t i): [j: nat | j <= n | j >= i] size_t j =
@@ -66,7 +66,7 @@ fn find_cmd {l: addr}{n: nat}
             else if array_get_at(!(array.buffer.1), i) = ' ' then i + 1
             else loop (array, i + 1)
         
-        val start = loop (array, i2sz(0))
+        val start = i
     in
         if start = array.size then false where {
             prval () = opt_none(res)
@@ -82,7 +82,10 @@ end
 fn make_empty_cmd {l: addr}{n: nat} (array: !Array(char, l, n)): (Command(n)?) =
     res where { var res: Command(n) }
 
-fn print_cmd {l: addr}{n: nat}{b: bool}
+fn make_cmd_vec {l: addr}{n: nat} (array: !Array(char, l, n)): [l2: agz](Vector(Command(n), l2, 0, 1)) =
+    res where { var res = vector_make<Command(n)> () }
+
+fn print_maybe_cmd {l: addr}{n: nat}{b: bool}
              (array: !Array(char, l, n), maybe_cmd: !opt(Command(n), b), b: bool b): void =
     if b then let
         prval () = opt_unsome (maybe_cmd)
@@ -91,53 +94,73 @@ fn print_cmd {l: addr}{n: nat}{b: bool}
     in end
     else ()
 
+fn print_cmd {l: addr}{n: nat}{b: bool}
+             (array: !Array(char, l, n), cmd: Command(n)): void = () where {
+    val () = array_iter_over (array, cmd.str_start, cmd.str_end, lam c => print (c))
+}
+
+fn print_cmds {l: addr}{n: nat}{l2: agz}{k: pos}{m: nat | m <= k}
+    (array: !Array(char, l, n), cmds: !Vector(Command(n), l2, m, k)): void = () where {
+
+    fun loop{l: addr}{n: nat}{l2: agz}{k: pos}{m: nat | m <= k}{i: nat | i <= m}
+        (array: !Array(char, l, n), cmds: !Vector(Command(n), l2, m, k), i: int i): void =
+        if i2sz(i) = cmds.size then ()
+        else let
+            val cmd = vector_get (cmds, i)
+            val () = print_cmd (array, cmd)
+        in
+            loop (array, cmds, i + 1)
+        end
+
+    val () = loop (array, cmds, 0)
+}
+
+
+fn parse_cmds {l: addr}{n: nat}{l2: agz}
+              (array: !Array(char, l, n), vec: &Vector(Command(n), l2, 0, 1) >> Vector(Command(n), l3, m, k)): 
+              #[l3: agz]#[k: pos]#[m: nat | m <= k] void =
+    let
+        fun loop {l: addr}{l2: agz}{k: pos}{n, m, i: nat | i <= n | m <= k} 
+                 (array: !Array(char, l, n), 
+                  vec: &Vector(Command(n), l2, m, k) >> Vector(Command(n), l3, m2, k2), 
+                  i: size_t i): #[l3: agz] #[k2: pos] #[m2: nat | m2 <= k2] void =
+            if i = array.size then ()
+            else let
+                var maybe_cmd = make_empty_cmd (array)
+                val b = find_cmd (array, maybe_cmd, i)
+            in
+                if b then let
+                    prval () = opt_unsome (maybe_cmd)
+                    val () = vector_push<Command(n)>(vec, maybe_cmd)
+                in 
+                    loop(array, vec, maybe_cmd.str_end)
+                end
+                else let 
+                    prval () = opt_unnone (maybe_cmd)
+                in end
+            end
+    in
+        loop (array, vec, i2sz(0))
+    end
+    
+
 implement main0 (argv, argc) = 
     let
         val () = print ("> ")
 
         val array = get_line ()
 
-        var cmd = make_empty_cmd (array)
+        var cmds = make_cmd_vec (array)
+        
+        val () = parse_cmds (array, cmds)
 
-        val b = find_cmd (array, cmd)
+        val () = print (cmds.size)
 
-        val () = print_cmd (array, cmd, b)
+        val () = print_cmds (array, cmds)
 
-
-        val () = if b then let prval () = opt_unsome (cmd) in end
-                 else let prval () = opt_unnone (cmd) in end
-
-        val () = array_iter (array, lam c => print (c))
+        val () = dynarray_dealloc (cmds.detail)
 
         val () = put_buf (array.buffer)
-
-        var vec = vector_make<int> ()
-
-        val () = vector_push<int>(vec, 1)
-        
-        val () = vector_push<int>(vec, 2)
-        
-        val () = vector_push<int>(vec, 3)
-
-        val () = vector_push<int>(vec, 4)
-
-        val num = vector_pop<int>(vec)
-
-        val () = print(num)
-
-        val num = vector_pop<int>(vec)
-
-        val () = print(num)
-
-        val num = vector_get<int>(vec, 1)
-
-        val () = print(num)
-
-        val num = vector_get<int>(vec, 0)
-
-        val () = print(num)
-
-        val () = dynarray_dealloc (vec.detail)
 
         // prval () = disjunct_array_uninit (vec.detail.1)
         // prval () = disjunct_to_array_v (vec.detail.1)

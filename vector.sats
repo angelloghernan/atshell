@@ -25,7 +25,7 @@ vtypedef DynArray(a: t@ype, l: addr, n: int, m: int) =
 vtypedef Vector(a: t@ype, l: addr, n: int, m: int) = 
     @{ detail=DynArray(a, l, n, m - n), size=size_t n, capacity=size_t m }
 
-fun {a: t@ype} vector_make (): [l: agz][m: pos] (Vector(a, l, 0, m))
+fun {a: t@ype} vector_make (): [l: agz] (Vector(a, l, 0, 1))
 
 fun {a: t@ype} vector_pop {l: agz}{m: pos}{n: pos | n <= m}
     (vec: &(Vector(a, l, n, m)) >> Vector(a, l, n - 1, m)): a
@@ -41,7 +41,7 @@ fn {a: t@ype} vector_expand {l: agz}{m: pos}{n: nat | n <= m}
 fn {a: t@ype} vector_push_one {l: agz}{m: pos}{n: nat | n < m}
    (vec: &(Vector(a, l, n, m)) >> Vector(a, l, n + 1, m), elem: a): void
 
-fn {a: t@ype} vector_get {l: agz}{m: pos}{n, i: nat | n < m | i < n}
+fn {a: t@ype} vector_get {l: agz}{m: pos}{n, i: nat | n <= m | i < n}
    (vec: !(Vector(a, l, n, m)), i: int i): a
 
 fun vector_dealloc {a:t@ype}{l: agz}{n, m: nat | n <= m} (vec: Vector(a, l, n, m)): void
