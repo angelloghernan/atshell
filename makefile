@@ -1,6 +1,6 @@
 FLAGS := -O3 -flto -DATS_MEMALLOC_LIBC
 
-DATS_FILES := file.dats vector.dats main.dats 
+DATS_FILES := file.dats vector.dats main.dats split_string.dats
 
 all: main
 

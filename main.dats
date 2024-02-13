@@ -2,23 +2,26 @@
 #include "share/atspre_staload_libats_ML.hats"
 staload "file.sats"
 staload "prelude/basics_dyn.sats"
+staload "split_string.sats"
 staload "./vector.sats"
 staload _ = "./vector.dats"
 
 macdef NULL = $extval(ptr(0), "0")
 
-vtypedef Buffer(a: t@ype, l: addr, n: int) = ((@[a][n]) @ l | ptr l)
+// abst@ype slice_ptr(a: t@ype, l: addr, n: int) = ptr(l + n * sizeof<a>)
 
-extern fn get_line_raw: (&ptr(0) >> ptr l, &size_t? >> size_t n, file_t) ->
-                       #[l: agz]#[n: nat]((@[char][n]) @ l | ssize_t) = "mac#getline"
+extern fn get_line_raw: (&ptr(0) >> ptr l, &size_t? >> size_t (n - 1), file_t) ->
+                       #[l: agz]#[n: pos](malloced_buffer, (@[asciiChar][n]) @ l | ssize_t) = "mac#getline"
 
 extern fn put_buf {l: addr}{n: int}{a: t@ype} (Buffer(a, l, n)): void = "mac#free"
 
+extern fn fork (): int = "mac#fork"
+
+extern fn execvp {n: int}(string, &(@[string][n])): int = "mac#execvp"
+
 macdef stdin_raw = $extval(file_t, "stdin")
 
-vtypedef Array(a: t@ype, l: addr, n: int) = @{ size=size_t n, buffer=Buffer(a, l, n) }
-
-typedef Command(n: int) = [m, k: nat | m <= k | k <= n] @{ str_start=size_t m, str_end=size_t k }
+typedef Token(n: int) = [m, k: nat | m <= k | k <= n] @{ str_start=size_t m, str_end=size_t k }
 
 fun {a: t@ype} vector_push {l: agz}{m: pos}{n: nat | n <= m}
     (vec: &(Vector(a, l, n, m)) >> Vector(a, l2, n + 1, k), elem: a):
@@ -30,12 +33,15 @@ fun {a: t@ype} vector_push {l: agz}{m: pos}{n: nat | n <= m}
         vector_push_one (vec, elem)
     end
 
-fn get_line (): [l: agz][n: nat](Array(char, l, n)) = array where {
-    var p: ptr = NULL
-    var bufsize: size_t
-    val (pf | _) = get_line_raw (p, bufsize, stdin_raw)
-    val array = @{ size=bufsize, buffer=(pf | p) }
-}
+fn gget_line (): [l: agz][n: pos](Array(asciiChar, l, n)) =
+    let
+        var p: ptr = NULL
+        var bufsize: size_t
+        val (pf1, pf2 | _) = get_line_raw (p, bufsize, stdin_raw)
+        val array = @{ size=bufsize + 1, buffer=((pf1, pf2) | p) }
+    in
+        array
+end
 
 
 fn array_iter_over {l: addr}{n, i, j: nat | i <= j | j <= n}
@@ -58,7 +64,7 @@ fn array_iter {l: addr}{n: nat} (array: !Array(char, l, n), f: char -> void): vo
 
 
 fn find_cmd {l: addr}{n: nat}{i: nat | i <= n}
-            (array: !Array(char, l, n), res: &Command(n)? >> opt(Command(n), b), i: size_t i): #[b:bool] bool(b) =
+            (array: !Array(char, l, n), res: &Token(n)? >> opt(Token(n), b), i: size_t i): #[b:bool] bool(b) =
     let
         fun loop {l: addr}{n, i: nat | i <= n} .<n - i>.
             (array: !Array(char, l, n), i: size_t i): [j: nat | j <= n | j >= i] size_t j =
@@ -85,14 +91,14 @@ fn find_cmd {l: addr}{n: nat}{i: nat | i <= n}
         }
 end
 
-fn make_empty_cmd {l: addr}{n: nat} (array: !Array(char, l, n)): (Command(n)?) =
-    res where { var res: Command(n) }
+fn make_empty_cmd {l: addr}{n: nat} (array: !Array(char, l, n)): (Token(n)?) =
+    res where { var res: Token(n) }
 
-fn make_cmd_vec {l: addr}{n: nat} (array: !Array(char, l, n)): [l2: agz](Vector(Command(n), l2, 0, 1)) =
-    res where { var res = vector_make<Command(n)> () }
+fn make_cmd_vec {l: addr}{n: nat} (array: !Array(char, l, n)): [l2: agz](Vector(Token(n), l2, 0, 1)) =
+    res where { var res = vector_make<Token(n)> () }
 
 fn print_maybe_cmd {l: addr}{n: nat}{b: bool}
-             (array: !Array(char, l, n), maybe_cmd: !opt(Command(n), b), b: bool b): void =
+             (array: !Array(char, l, n), maybe_cmd: !opt(Token(n), b), b: bool b): void =
     if b then let
         prval () = opt_unsome (maybe_cmd)
         val () = array_iter_over (array, maybe_cmd.str_start, maybe_cmd.str_end, lam c => print (c))
@@ -101,15 +107,15 @@ fn print_maybe_cmd {l: addr}{n: nat}{b: bool}
     else ()
 
 fn print_cmd {l: addr}{n: nat}{b: bool}
-             (array: !Array(char, l, n), cmd: Command(n)): void = () where {
+             (array: !Array(char, l, n), cmd: Token(n)): void = () where {
     val () = array_iter_over (array, cmd.str_start, cmd.str_end, lam c => print (c))
 }
 
 fn print_cmds {l: addr}{n: nat}{l2: agz}{k: pos}{m: nat | m <= k}
-    (array: !Array(char, l, n), cmds: !Vector(Command(n), l2, m, k)): void = () where {
+    (array: !Array(char, l, n), cmds: !Vector(Token(n), l2, m, k)): void = () where {
 
     fun loop{l: addr}{n: nat}{l2: agz}{k: pos}{m: nat | m <= k}{i: nat | i <= m}
-        (array: !Array(char, l, n), cmds: !Vector(Command(n), l2, m, k), i: int i): void =
+        (array: !Array(char, l, n), cmds: !Vector(Token(n), l2, m, k), i: int i): void =
         if i2sz(i) = cmds.size then ()
         else let
             val cmd = vector_get (cmds, i)
@@ -123,12 +129,12 @@ fn print_cmds {l: addr}{n: nat}{l2: agz}{k: pos}{m: nat | m <= k}
 
 
 fn parse_cmds {l: addr}{n: nat}{l2: agz}
-              (array: !Array(char, l, n), vec: &Vector(Command(n), l2, 0, 1) >> Vector(Command(n), l3, m, k)): 
+              (array: !Array(char, l, n), vec: &Vector(Token(n), l2, 0, 1) >> Vector(Token(n), l3, m, k)): 
               #[l3: agz]#[k: pos]#[m: nat | m <= k] void =
     let
         fun loop {l: addr}{l2: agz}{k: pos}{n, m, i: nat | i <= n | m <= k} 
                  (array: !Array(char, l, n), 
-                  vec: &Vector(Command(n), l2, m, k) >> Vector(Command(n), l3, m2, k2), 
+                  vec: &Vector(Token(n), l2, m, k) >> Vector(Token(n), l3, m2, k2), 
                   i: size_t i): #[l3: agz] #[k2: pos] #[m2: nat | m2 <= k2] void =
             if i = array.size then ()
             else let
@@ -137,7 +143,7 @@ fn parse_cmds {l: addr}{n: nat}{l2: agz}
             in
                 if b then let
                     prval () = opt_unsome (maybe_cmd)
-                    val () = vector_push<Command(n)>(vec, maybe_cmd)
+                    val () = vector_push<Token(n)>(vec, maybe_cmd)
                 in 
                     loop(array, vec, maybe_cmd.str_end)
                 end
@@ -154,7 +160,7 @@ implement main0 (argv, argc) =
     let
         val () = print ("> ")
 
-        val array = get_line ()
+        val array = gget_line ()
 
         var cmds = make_cmd_vec (array)
         
@@ -164,7 +170,20 @@ implement main0 (argv, argc) =
 
         val () = dynarray_dealloc (cmds.detail)
 
+        prval _ = $showtype array.buffer.0
+
+        var split = array_to_split_string (array.buffer.0, array.buffer.1, array.size, ' ')
+
+        prval buf_v = split_string_v_to_buffer_v (split.pf, split.str_view)
+
+        val () = array.buffer.0 := buf_v
+
+        // prval _ = $showtype array
+
+        // prval _ = $showtype array
+
         val () = put_buf (array.buffer)
+        
 
         // prval () = disjunct_array_uninit (vec.detail.1)
         // prval () = disjunct_to_array_v (vec.detail.1)
