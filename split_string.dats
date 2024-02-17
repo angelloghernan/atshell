@@ -14,19 +14,19 @@ implement array_to_split_string {l} {n}
             prval (pf1, pf2) = array_v_uncons(str_v)
             val c: asciiChar = ptr_get<asciiChar>(pf1 | p)
          in
-            if sz = 1 then let 
+            if sz = 1 then let
                prval () = array_v_unnil (pf2)
                val () = ptr_set<char(0)>(pf1 | p, '\0')
             in
                (split_string_nil(pf1, split_string_end ()) | i2sz(1))
             end
-            else if c = delimiter && prev_null = false then let
+            else if (c = delimiter || c = '\n') && prev_null = false then let
                val () = ptr_set<char(0)>(pf1 | p, '\0')
                val (rpf | sz2) = loop (pf2 | ptr_succ<char>(p), sz - 1, delimiter, true)
             in
                (split_string_nil (pf1, rpf) | sz2 + 1)
             end
-            else if c = delimiter && prev_null = true then let
+            else if (c = delimiter || c = '\n') && prev_null = true then let
                val () = ptr_set<char(26)>(pf1 | p, '\x1a')
                val (rpf | sz2) = loop (pf2 | ptr_succ<char>(p), sz - 1, delimiter, true)
             in

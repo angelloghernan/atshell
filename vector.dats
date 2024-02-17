@@ -5,7 +5,7 @@ staload "vector.sats"
 fn {a: t@ype} ty_malloc (): [l: agz] (Boxed(a, l)) =
     $extfcall([l: agz] (Boxed(a, l)), "malloc", sizeof<a>)
 
-fn {a: t@ype} array_malloc {n: nat} (n: int n): [l: agz] (Boxed(@[a?][n], l)) =
+implement {a} array_malloc {n} (n: size_t n): [l: agz] (Boxed(@[a?][n], l)) =
     $extfcall([l: agz] (Boxed(@[a?][n], l)), "malloc", sizeof<a> * n)
 
 prfun array_v_to_disjunct {a: t@ype}{l: addr}{n: nat} .<n>.
@@ -134,7 +134,7 @@ end
 
 implement {a: t@ype} vector_make (): [l: agz] (Vector(a, l, 0, 1)) =
     let
-        val box = array_malloc (1)
+        val box = array_malloc (i2sz(1))
         prval () = array_v_to_disjunct (box.1)
     in
         @{ detail=box, size=i2sz(0), capacity=i2sz(1) }
@@ -156,7 +156,7 @@ end
 implement {a} vector_expand {l}{m}{n} (vec): void =
     let
         val new_capacity: size_t(m * 2) = vec.capacity * 2
-        val box = array_malloc(sz2i(new_capacity))
+        val box = array_malloc (new_capacity)
         prval () = array_v_to_disjunct (box.1)
         val () = dynarray_copy(vec.detail, box, vec.size)
         prval () = disjunct_array_uninit (vec.detail.1)

@@ -10,14 +10,14 @@ macdef NULL = $extval(ptr(0), "0")
 
 // abst@ype slice_ptr(a: t@ype, l: addr, n: int) = ptr(l + n * sizeof<a>)
 
-extern fn get_line_raw: (&ptr(0) >> ptr l, &size_t? >> size_t (n - 1), file_t) ->
-                       #[l: agz]#[n: pos](malloced_buffer, (@[asciiChar][n]) @ l | ssize_t) = "mac#getline"
+extern fn get_line_raw: (&ptr(0) >> ptr l, &size_t? >> size_t (n), file_t) ->
+                        #[l: agz]#[n: pos](malloced_buffer(l), (@[asciiChar][n]) @ l | ssize_t) = "mac#getline"
 
 extern fn put_buf {l: addr}{n: int}{a: t@ype} (Buffer(a, l, n)): void = "mac#free"
 
 extern fn fork (): int = "mac#fork"
 
-extern fn execvp {n: int}(string, &(@[string][n])): int = "mac#execvp"
+extern fn execvp_raw {n: int}(string, &(@[string][n])): int = "mac#execvp"
 
 macdef stdin_raw = $extval(file_t, "stdin")
 
@@ -31,24 +31,25 @@ fun {a: t@ype} vector_push {l: agz}{m: pos}{n: nat | n <= m}
         val () = vector_expand<a>(vec)
     in
         vector_push_one (vec, elem)
-    end
+end
 
-fn gget_line (): [l: agz][n: pos](Array(asciiChar, l, n)) =
+fn get_line (): [l: agz][n: pos](Array(asciiChar, l, n)) =
     let
         var p: ptr = NULL
         var bufsize: size_t
         val (pf1, pf2 | _) = get_line_raw (p, bufsize, stdin_raw)
-        val array = @{ size=bufsize + 1, buffer=((pf1, pf2) | p) }
     in
-        array
+        @{ size=bufsize, buffer=((pf1, pf2) | p) }
 end
+
+// fn exec () {n: int}
 
 
 fn array_iter_over {l: addr}{n, i, j: nat | i <= j | j <= n}
-                   (array: !Array(char, l, n), i: size_t i, j: size_t j, f: char -> void): void =
+                   (array: !Array(asciiChar, l, n), i: size_t i, j: size_t j, f: char -> void): void =
     let
         fun loop {l: addr}{n, i, j: nat | i <= j | j <= n} .<j - i>.
-            (buf: !Buffer(char, l, n), i: size_t i, j: size_t j, f: char -> void): void =
+            (buf: !Buffer(asciiChar, l, n), i: size_t i, j: size_t j, f: char -> void): void =
             if i = j then ()
             else let
                 val c = array_get_at(!(buf.1), i)
@@ -59,21 +60,21 @@ fn array_iter_over {l: addr}{n, i, j: nat | i <= j | j <= n}
         loop (array.buffer, i, j, f)
 end 
 
-fn array_iter {l: addr}{n: nat} (array: !Array(char, l, n), f: char -> void): void =
+fn array_iter {l: addr}{n: nat} (array: !Array(asciiChar, l, n), f: char -> void): void =
     array_iter_over (array, i2sz(0), array.size, f)
 
 
 fn find_cmd {l: addr}{n: nat}{i: nat | i <= n}
-            (array: !Array(char, l, n), res: &Token(n)? >> opt(Token(n), b), i: size_t i): #[b:bool] bool(b) =
+            (array: !Array(asciiChar, l, n), res: &Token(n)? >> opt(Token(n), b), i: size_t i): #[b:bool] bool(b) =
     let
         fun loop {l: addr}{n, i: nat | i <= n} .<n - i>.
-            (array: !Array(char, l, n), i: size_t i): [j: nat | j <= n | j >= i] size_t j =
+            (array: !Array(asciiChar, l, n), i: size_t i): [j: nat | j <= n | j >= i] size_t j =
             if i = array.size then i
             else if array_get_at (!(array.buffer.1), i) = ' ' then i
             else loop (array, i + 1)
 
         fun first_non_space {l: addr}{n, i: nat | i <= n} .<n - i>.
-            (array: !Array(char, l, n), i: size_t i): [j: nat | j <= n | j >= i] size_t j =
+            (array: !Array(asciiChar, l, n), i: size_t i): [j: nat | j <= n | j >= i] size_t j =
             if i = array.size then i
             else if array_get_at (!(array.buffer.1), i) != ' ' then i
             else first_non_space (array, i + 1)
@@ -91,14 +92,14 @@ fn find_cmd {l: addr}{n: nat}{i: nat | i <= n}
         }
 end
 
-fn make_empty_cmd {l: addr}{n: nat} (array: !Array(char, l, n)): (Token(n)?) =
+fn make_empty_cmd {l: addr}{n: nat} (array: !Array(asciiChar, l, n)): (Token(n)?) =
     res where { var res: Token(n) }
 
-fn make_cmd_vec {l: addr}{n: nat} (array: !Array(char, l, n)): [l2: agz](Vector(Token(n), l2, 0, 1)) =
+fn make_cmd_vec {l: addr}{n: nat} (array: !Array(asciiChar, l, n)): [l2: agz](Vector(Token(n), l2, 0, 1)) =
     res where { var res = vector_make<Token(n)> () }
 
 fn print_maybe_cmd {l: addr}{n: nat}{b: bool}
-             (array: !Array(char, l, n), maybe_cmd: !opt(Token(n), b), b: bool b): void =
+             (array: !Array(asciiChar, l, n), maybe_cmd: !opt(Token(n), b), b: bool b): void =
     if b then let
         prval () = opt_unsome (maybe_cmd)
         val () = array_iter_over (array, maybe_cmd.str_start, maybe_cmd.str_end, lam c => print (c))
@@ -107,15 +108,15 @@ fn print_maybe_cmd {l: addr}{n: nat}{b: bool}
     else ()
 
 fn print_cmd {l: addr}{n: nat}{b: bool}
-             (array: !Array(char, l, n), cmd: Token(n)): void = () where {
+             (array: !Array(asciiChar, l, n), cmd: Token(n)): void = () where {
     val () = array_iter_over (array, cmd.str_start, cmd.str_end, lam c => print (c))
 }
 
 fn print_cmds {l: addr}{n: nat}{l2: agz}{k: pos}{m: nat | m <= k}
-    (array: !Array(char, l, n), cmds: !Vector(Token(n), l2, m, k)): void = () where {
+    (array: !Array(asciiChar, l, n), cmds: !Vector(Token(n), l2, m, k)): void = () where {
 
     fun loop{l: addr}{n: nat}{l2: agz}{k: pos}{m: nat | m <= k}{i: nat | i <= m}
-        (array: !Array(char, l, n), cmds: !Vector(Token(n), l2, m, k), i: int i): void =
+        (array: !Array(asciiChar, l, n), cmds: !Vector(Token(n), l2, m, k), i: int i): void =
         if i2sz(i) = cmds.size then ()
         else let
             val cmd = vector_get (cmds, i)
@@ -129,11 +130,11 @@ fn print_cmds {l: addr}{n: nat}{l2: agz}{k: pos}{m: nat | m <= k}
 
 
 fn parse_cmds {l: addr}{n: nat}{l2: agz}
-              (array: !Array(char, l, n), vec: &Vector(Token(n), l2, 0, 1) >> Vector(Token(n), l3, m, k)): 
+              (array: !Array(asciiChar, l, n), vec: &Vector(Token(n), l2, 0, 1) >> Vector(Token(n), l3, m, k)): 
               #[l3: agz]#[k: pos]#[m: nat | m <= k] void =
     let
         fun loop {l: addr}{l2: agz}{k: pos}{n, m, i: nat | i <= n | m <= k} 
-                 (array: !Array(char, l, n), 
+                 (array: !Array(asciiChar, l, n), 
                   vec: &Vector(Token(n), l2, m, k) >> Vector(Token(n), l3, m2, k2), 
                   i: size_t i): #[l3: agz] #[k2: pos] #[m2: nat | m2 <= k2] void =
             if i = array.size then ()
@@ -160,17 +161,9 @@ implement main0 (argv, argc) =
     let
         val () = print ("> ")
 
-        val array = gget_line ()
+        val array = get_line ()
 
-        var cmds = make_cmd_vec (array)
-        
-        val () = parse_cmds (array, cmds)
-
-        val () = print_cmds (array, cmds)
-
-        val () = dynarray_dealloc (cmds.detail)
-
-        prval _ = $showtype array.buffer.0
+        val () = array_iter_over (array, i2sz(0), array.size, lam c => print c)
 
         var split = array_to_split_string (array.buffer.0, array.buffer.1, array.size, ' ')
 
@@ -178,17 +171,16 @@ implement main0 (argv, argc) =
 
         val () = array.buffer.0 := buf_v
 
-        // prval _ = $showtype array
+        val () = array_iter_over (array, i2sz(0), array.size, lam c => (if c = '\0' then print "0" else print c))
 
-        // prval _ = $showtype array
+        var cmds = make_cmd_vec (array)
+
+        val () = parse_cmds (array, cmds)
+
+        // val () = print_cmds (array, cmds)
+
+        val () = dynarray_dealloc (cmds.detail)
 
         val () = put_buf (array.buffer)
-        
-
-        // prval () = disjunct_array_uninit (vec.detail.1)
-        // prval () = disjunct_to_array_v (vec.detail.1)
-        // val () = ty_free (vec.detail)
-
-        // val () = vector_dealloc (vec)
     in
 end

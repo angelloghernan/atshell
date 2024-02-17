@@ -1,10 +1,12 @@
 #include "share/atspre_staload.hats"
 #include "share/atspre_staload_libats_ML.hats"
 
-absview malloced_ptr
-vtypedef Boxed(a: t@ype, l: addr) = (malloced_ptr, a? @ l | ptr l)
+absview malloced_ptr(addr)
+vtypedef Boxed(a: t@ype, l: addr) = (malloced_ptr(l), a? @ l | ptr l)
 
-fn {a: t@ype} array_malloc {n: nat} (n: int n): [l: agz] (Boxed(@[a?][n], l))
+vtypedef BoxedArray(a: t@ype, l: addr, n: int) = (malloced_ptr(l), (@[a?][n]) @ l | ptr l)
+
+fn {a: t@ype} array_malloc {n: nat} (n: size_t n): [l: agz] (Boxed(@[a?][n], l))
 
 fn ty_free {a: t@ype} {l: addr} (Boxed(a, l)): void = "mac#free"
 
@@ -20,7 +22,7 @@ dataview disjunct_array_v(a: t@ype, l: addr, n: int, m: int) =
     (a? @ l, disjunct_array_v(a, l + sizeof(a), 0, m))
 
 vtypedef DynArray(a: t@ype, l: addr, n: int, m: int) = 
-    (malloced_ptr, disjunct_array_v (a, l, n, m) | ptr l)
+    (malloced_ptr(l), disjunct_array_v (a, l, n, m) | ptr l)
 
 vtypedef Vector(a: t@ype, l: addr, n: int, m: int) = 
     @{ detail=DynArray(a, l, n, m - n), size=size_t n, capacity=size_t m }
