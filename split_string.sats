@@ -39,14 +39,14 @@ praxi split_string_v_is_end {l: addr} {m: nat}
 praxi split_string_v_is_not_end {l: addr}{n: pos}{m: nat}
       (!split_string_v(l, n, m)): [m > 0] void
 
-typedef undeterminedChar(m: int, k: int) = 
-  [c: int | (c == 0 && k == m - 1) || ((c == 26 || (c >= 32 && c <= 126)) && k == m)]
+typedef undeterminedChar(m: int, m2: int) = 
+  [c: int | (c == 0 && m2 == m - 1) || (c == 26 && m2 == m) || ((c >= 32 && c <= 126) && m2 == m)]
   char(c)
 
 praxi split_string_get_first {l: addr} {m, n: pos}
       (split_string_v(l, n, m)): 
-      [k: nat | k == m || k == m - 1]
-      (undeterminedChar(m, k) @ l, split_string_v(l + sizeof(char), n - 1, k))
+      [mm: nat | mm == m || mm == m - 1]
+      (undeterminedChar(m, mm) @ l, split_string_v(l + sizeof(char), n - 1, mm))
 
 fn array_to_split_string {l: addr} {n: pos}
    (buf_view: BufferView(asciiChar, l, n), p: ptr l, size: size_t n, delimiter: asciiChar): [m: nat] SplitString(l, n, m)
