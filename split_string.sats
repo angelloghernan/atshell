@@ -36,8 +36,11 @@ praxi split_string_v_to_buffer_v {l: addr} {n: nat} {m: nat}
 praxi split_string_v_is_end {l: addr} {m: nat}
       (!split_string_v(l, 0, m)): [m == 0] void
 
-praxi split_string_v_is_not_end {l: addr}{n: pos}{m: nat}
+praxi split_string_v_n_is_not_end {l: addr}{n: pos}{m: nat}
       (!split_string_v(l, n, m)): [m > 0] void
+
+praxi split_string_v_m_is_not_end {l: addr}{n: nat}{m: pos}
+      (!split_string_v(l, n, m)): [n > 0] void
 
 typedef undeterminedChar(m: int, m2: int) = 
   [c: int | (c == 0 && m2 == m - 1) || (c == 26 && m2 == m) || ((c >= 32 && c <= 126) && m2 == m)]

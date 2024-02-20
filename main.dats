@@ -5,13 +5,17 @@ staload "prelude/basics_dyn.sats"
 staload "split_string.sats"
 staload "./vector.sats"
 staload _ = "./vector.dats"
+staload "exec.sats"
 
 macdef NULL = $extval(ptr(0), "0")
 
 // abst@ype slice_ptr(a: t@ype, l: addr, n: int) = ptr(l + n * sizeof<a>)
 
-extern fn get_line_raw: (&ptr(0) >> ptr l, &size_t? >> size_t (n), file_t) ->
-                        #[l: agz]#[n: pos](malloced_buffer(l), (@[asciiChar][n]) @ l | ssize_t) = "mac#getline"
+extern fn free_array {a: t@ype}{l: addr}{n: nat}
+       (malloced_ptr(l), array_v(a, l, n) | ptr l): void = "mac#free"
+
+extern fn get_line_raw: (&ptr(0) >> ptr l, &size_t? >> size_t, file_t) ->
+                        #[l: agz]#[n: pos](malloced_buffer(l), (@[asciiChar][n]) @ l | size_t n) = "mac#getline"
 
 extern fn put_buf {l: addr}{n: int}{a: t@ype} (Buffer(a, l, n)): void = "mac#free"
 
@@ -36,8 +40,8 @@ end
 fn get_line (): [l: agz][n: pos](Array(asciiChar, l, n)) =
     let
         var p: ptr = NULL
-        var bufsize: size_t
-        val (pf1, pf2 | _) = get_line_raw (p, bufsize, stdin_raw)
+        var allocated_size: size_t
+        val (pf1, pf2 | bufsize) = get_line_raw (p, allocated_size, stdin_raw)
     in
         @{ size=bufsize, buffer=((pf1, pf2) | p) }
 end
@@ -163,9 +167,18 @@ implement main0 (argv, argc) =
 
         val array = get_line ()
 
+        val () = println! ("Array size is ", array.size)
         val () = array_iter_over (array, i2sz(0), array.size, lam c => print c)
 
         var split = array_to_split_string (array.buffer.0, array.buffer.1, array.size, ' ')
+
+        val term = make_terminated (split, array.buffer.1)
+
+        val ret = exec_variable_params (term)
+
+        prval av = terminated_array_v_to_array_v (term.tpf)
+
+        val () = free_array (term.mpf, av | term.p)
 
         prval buf_v = split_string_v_to_buffer_v (split.pf, split.str_view)
 

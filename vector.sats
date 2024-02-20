@@ -10,6 +10,8 @@ fn {a: t@ype} array_malloc {n: nat} (n: size_t n): [l: agz] (Boxed(@[a?][n], l))
 
 fn ty_free {a: t@ype} {l: addr} (Boxed(a, l)): void = "mac#free"
 
+// fn array_free {a: t@ype}{l: addr}{n: int} (BoxedArray(a, l, n)): void = "mac#free"
+
 dataview disjunct_array_v(a: t@ype, l: addr, n: int, m: int) =
   | disjunct_array_nil (a, l, 0, 0)
 
