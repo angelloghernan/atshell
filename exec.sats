@@ -19,3 +19,6 @@ fn exec_variable_params {l: addr}{m: nat} (ta: !TerminatedArray(l, m)): int
 
 praxi terminated_array_v_to_array_v {l: addr}{m: nat} 
       (terminated_array_v(l, m)): array_v(ptr, l, m + 1)
+
+praxi terminated_array_v_fst {l: addr}{m: nat}
+      (terminated_array_v(l, m)): (ptr @ l, ptr @ l -<lin,prf> terminated_array_v (l, m))

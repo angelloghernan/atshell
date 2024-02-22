@@ -4,6 +4,8 @@ staload "vector.sats"
 staload "split_string.sats"
 staload "exec.sats"
 
+staload UN = "prelude/SATS/unsafe.sats"
+
 %{^
     #include <unistd.h>
 %}
@@ -15,9 +17,11 @@ fn {a: t@ype} malloc_array {n: nat} (n: size_t n): [l: agz] (BoxedArray(a, l, n)
 
 implement exec_variable_params {l}{m} (ta) =
     let
-        val () = print (ta.p)
+        prval (ptr_pf, f) = terminated_array_v_fst (ta.tpf)
+        val name_p = ptr_get<ptr>(ptr_pf | ta.p)
+        prval () = ta.tpf := f (ptr_pf)
     in
-        $extfcall(int, "execvp", "ls", ta.p)
+        $extfcall(int, "execvp", name_p, ta.p)
 end
 
 implement make_terminated {l}{n}{m}
